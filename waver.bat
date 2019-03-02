@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set sp=2048
+set sp=11025
 
 set /a t1=sp/2
 set f1=256
