@@ -5,7 +5,11 @@ with sa
 	.type = 2
 	.open
 	do until fp.atendofstream
-		.writetext chrb(cdbl(fp.readline()))
+		dim line
+		line = split(fp.readline(), " ")
+		for i = 1 to int(line(0))
+			.writetext chrb(line(1))
+		next
 	loop
 	.position = 2
 	set sb = createobject("adodb.stream")

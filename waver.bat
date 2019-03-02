@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set sp=5000
+set sp=2048
 
 set /a t1=sp/2
 set f1=256
@@ -13,17 +13,68 @@ set f6=431
 set f7=483
 set f0=0
 
-call :comp "%~f1" >"%~dpn1_hex.txt"
-cscript /nologo hex.vbs "%~dpn1_hex.txt" "%~dpn1.bin"
-del "%~dpn0.sw?"
+call :comp "%~f1" >"%~dpn1_body.txt"
+cscript /nologo hex.vbs "%~dpn1_body.txt" "%~dpn1.body"
+
+for %%a in ("%~dpn1_body.snd") do set szbody=%%~za
+
+(
+	REM 资源交换文件标志（RIFF）
+	echo 1 82
+	echo 1 73
+	echo 2 70
+	REM 从下个地址开始到文件尾的总字节数
+	set /a szcont=szbody+36
+	call :hexout !szcont!
+	REM WAV文件标志（WAVE）
+	echo 1 87
+	echo 1 65
+	echo 1 86
+	echo 1 69
+	REM 波形格式标志（fmt ），最后一位空格。
+	echo 1 102
+	echo 1 109
+	echo 1 116
+	echo 1 32
+	REM 过滤字节（一般为00000010H）
+	echo 1 16
+	echo 3 0
+	REM 格式种类（值为1时，表示数据为线性PCM编码）
+	echo 1 1
+	echo 1 0
+	REM 通道数，单声道为1
+	echo 1 1
+	echo 1 0
+	REM 采样频率
+	call :hexout !sp!
+	REM 波形数据传输速率（每秒平均字节数）
+	call :hexout !sp!
+	REM DATA数据块长度，字节。
+	echo 1 0
+	echo 0 0
+	REM PCM位宽
+	echo 1 8
+	echo 0 0
+	REM 数据标志符（data）
+	echo 1 100
+	echo 1 97
+	echo 1 116
+	echo 1 97
+	REM DATA总数据长度字节
+	call :hexout !szbody!
+	REM DATA数据块
+) > "%~dpn1_head.txt"
+cscript /nologo hex.vbs "%~dpn1_head.txt" "%~dpn1.head"
+copy "%~dpn1.head" + "%~dpn1.body" "%~dpn1.wav"
+del "%~dpn1_head.txt" "%~dpn1_body.txt" "%~dpn1.head" "%~dpn1.body"
 goto :eof
 
 :comp
+(more <"%~1" & echo $)>"%~dpn0.tmp"
+for /f %%a in ('find /c "$" ^<"%~dpn0.tmp"') do set $n=%%a
+set $c=0
 set n=0
-(more <"%~1" & echo $)>"%~dpn0.sw0"
-for /f %%a in ('find /c "$" ^<"%~dpn0.sw0"') do set tot=%%a
-set cnt=0
-for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
+for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 	set l=%%l
 	if not "!l:~,1!"=="$" (
 		set /a n+=1
@@ -32,8 +83,8 @@ for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
 			if not "!l!"=="!l:%%n=!" set ml=!n!
 		)
 	) else (
-		set /a cnt+=1
-		echo !cnt! / !tot! >&2
+		set /a $c+=1
+		echo !$c! / !$n! >&2
 		REM gen
 		if !n! neq 0 (
 			REM strlen
@@ -53,7 +104,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
 			set k=256
 			set t=!t1!
 			set ts=!t1!
-			set /a tw=t1/64
+			set /a tw=t1/16
 			for %%m in (!ml!) do (
 				for /l %%x in (0,1,!len!) do (
 					set c=!l%%m:~%%x,1!
@@ -84,13 +135,16 @@ for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
 								)
 							)
 							if "!feq!"=="0" (
-								for /l %%a in (1,1,!t!) do echo 128
+								echo !t! 128
 							) else (
-								for /l %%a in (2,1,!tw!) do echo 128
-								for /l %%a in (!tw!,1,!t!) do (
-									set /a "e=((%%a*2*feq/sp) %% 2)*128+64"
-									echo !e!
+								if !tw! gtr 0 echo !tw! 128
+								set /a t0=t-tw,x=t0*2*feq/sp
+								for /l %%x in (1,1,!x!) do (
+									set /a "e=(%%x %% 2)*128+64,t2=%%x*sp/2/feq - (%%x-1)*sp/2/feq"
+									if !t2! gtr 0 echo !t2! !e!
 								)
+								set /a "e=((x+1)%% 2)*128+64,t2=t0-x*sp/2/feq"
+								if !t2! gtr 0 echo !t2! !e!
 							)
 							REM muz end
 							set x=%%x
@@ -98,7 +152,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
 							set k=256
 							set t=!t1!
 							set ts=!t1!
-							set /a tw=t1/64
+							set /a tw=t1/16
 						)
 					)
 					if "!s!"=="0" (
@@ -114,4 +168,13 @@ for /f "usebackq delims=" %%l in ("%~dpn0.sw0") do (
 		set n=0
 	)
 )
+del "%~dpn0.tmp"
+goto :eof
+
+:hexout
+set /a "x1=%~1 & 0xFF, x2=(%~1 << 8) & 0xFF, x3=(%~1 << 16) & 0xFF, x4=(%~1 << 24) & 0xFF
+echo 1 !x1!
+echo 1 !x2!
+echo 1 !x3!
+echo 1 !x4!
 goto :eof
