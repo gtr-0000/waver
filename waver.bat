@@ -16,7 +16,7 @@ set f0=0
 call :comp "%~f1" >"%~dpn1_body.txt"
 cscript /nologo hex.vbs "%~dpn1_body.txt" "%~dpn1.body"
 
-for %%a in ("%~dpn1_body.snd") do set szbody=%%~za
+for %%a in ("%~dpn1.body") do set szbody=%%~za
 
 (
 	REM 资源交换文件标志（RIFF）
@@ -51,10 +51,10 @@ for %%a in ("%~dpn1_body.snd") do set szbody=%%~za
 	call :hexout !sp!
 	REM DATA数据块长度，字节。
 	echo 1 0
-	echo 0 0
+	echo 1 0
 	REM PCM位宽
 	echo 1 8
-	echo 0 0
+	echo 1 0
 	REM 数据标志符（data）
 	echo 1 100
 	echo 1 97
@@ -65,7 +65,7 @@ for %%a in ("%~dpn1_body.snd") do set szbody=%%~za
 	REM DATA数据块
 ) > "%~dpn1_head.txt"
 cscript /nologo hex.vbs "%~dpn1_head.txt" "%~dpn1.head"
-copy "%~dpn1.head" + "%~dpn1.body" "%~dpn1.wav"
+copy "%~dpn1.head" + "%~dpn1.body" "%~dpn1.wav" >nul
 del "%~dpn1_head.txt" "%~dpn1_body.txt" "%~dpn1.head" "%~dpn1.body"
 goto :eof
 
@@ -172,7 +172,7 @@ del "%~dpn0.tmp"
 goto :eof
 
 :hexout
-set /a "x1=%~1 & 0xFF, x2=(%~1 << 8) & 0xFF, x3=(%~1 << 16) & 0xFF, x4=(%~1 << 24) & 0xFF
+set /a "x1=%~1 & 0xFF, x2=(%~1 >> 8) & 0xFF, x3=(%~1 >> 16) & 0xFF, x4=(%~1 >> 24) & 0xFF
 echo 1 !x1!
 echo 1 !x2!
 echo 1 !x3!
