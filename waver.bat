@@ -74,7 +74,7 @@ for %%a in ("%~dpn1.body") do set szbody=%%~za
 ) > "%~dpn1_head.txt"
 cscript /nologo hex.vbs "%~dpn1_head.txt" "%~dpn1.head"
 copy "%~dpn1.head" + "%~dpn1.body" "%~dpn1.wav" >nul
-for %%o in (%*) do "%%~dpno.body"
+for %%o in (%*) do del "%%~dpno.body"
 del "%~dpn1_head.txt" "%~dpn1.head" 
 goto :eof
 
