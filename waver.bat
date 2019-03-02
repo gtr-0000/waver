@@ -1,4 +1,5 @@
 @echo off
+
 setlocal enabledelayedexpansion
 
 set sp=11025
@@ -13,8 +14,15 @@ set f6=431
 set f7=483
 set f0=0
 
-call :comp "%~f1" >"%~dpn1_body.txt"
-cscript /nologo hex.vbs "%~dpn1_body.txt" "%~dpn1.body"
+set body=
+for %%o in (%*) do (
+	echo "%%~o" : 
+	call :comp "%%~fo" >"%%~dpno_body.txt"
+	hex.vbs "%%~dpno_body.txt" "%%~dpno.body"
+	del "%%~dpno_body.txt"
+	set body=!body! "%%~dpno.body"
+)
+merge.vbs !body!
 
 for %%a in ("%~dpn1.body") do set szbody=%%~za
 
@@ -66,7 +74,8 @@ for %%a in ("%~dpn1.body") do set szbody=%%~za
 ) > "%~dpn1_head.txt"
 cscript /nologo hex.vbs "%~dpn1_head.txt" "%~dpn1.head"
 copy "%~dpn1.head" + "%~dpn1.body" "%~dpn1.wav" >nul
-del "%~dpn1_head.txt" "%~dpn1_body.txt" "%~dpn1.head" "%~dpn1.body"
+for %%o in (%*) do "%%~dpno.body"
+del "%~dpn1_head.txt" "%~dpn1.head" 
 goto :eof
 
 :comp
