@@ -1,4 +1,27 @@
 @echo off
+if not "%*"=="" goto main
+echo 请选择简谱
+call selectfile name
+if not defined name goto :eof
+set list="%name:"=%"
+
+:ask
+set /p i=需要选择更多简谱？(Y/N)
+if /i "%i:"=%"=="N" (
+	call :main %list%
+	goto :eof
+)
+if /i not "%i:"=%"=="Y" goto UI
+echo 请选择简谱
+call selectfile name
+if not defined name (
+	call :main %list%
+	goto :eof
+)
+set list=%list% "%name:"=%"
+goto ask
+
+:main
 
 setlocal enabledelayedexpansion
 
@@ -18,7 +41,7 @@ set f0=0
 
 set snd=
 for %%o in (%*) do (
-	echo "%%~o"
+	echo 正在处理 "%%~o" . . .
 	REM 生成波形，hex文件格式：
 	REM 有多行，每一行有两个数字 a b ，表示有 a 个字符码为 b 的字符
 	call :compile "%%~fo" >"%%~dpno.hex"
@@ -29,6 +52,7 @@ for %%o in (%*) do (
 )
 
 REM 混合
+echo 正在生成. . .
 mergesnd.vbs !snd!
 
 REM 获得大小
@@ -88,6 +112,8 @@ REM 合并成品
 copy /b "%~dpn1.head" + "%~dpn1.snd" "%~dpn1.wav" >nul
 for %%o in (%*) do del "%%~dpno.snd"
 del "%~dpn1_head.hex" "%~dpn1.head"
+echo 已保存到 "%~dpn1.wav" .
+pause
 goto :eof
 
 :compile
