@@ -7,6 +7,7 @@ set list="%name:"=%"
 
 :ask
 set /p i=需要选择更多简谱？(Y/N)
+if not defined i goto ask
 if /i "%i:"=%"=="N" (
 	call :main %list%
 	goto :eof
