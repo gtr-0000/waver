@@ -18,17 +18,19 @@ with sa
 	do until fp(0).eos
 		tn=0
 		cn=0
-		for i = 0 to UBound(fp)
+		for i=0 to UBound(fp)
 			if not fp(i).eos then
-				tn=tn+1
-				cn=cn+ascb(fp(i).readtext(1))
+				tn=tn + 1
+				a=fp(i).readtext(1)
+				if len(a)=0 then exit do
+				cn=cn+ascb(a)
 			end if
 		next
 		cn=int(cn/tn)
 		sa.writetext chrb(cn)
 	loop
 
-	for i = 0 to UBound(fp)
+	for i=0 to UBound(fp)
 		fp(i).close
 	next
 
