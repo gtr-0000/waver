@@ -205,7 +205,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 						REM 遇到#,b,+,0-7时表明应该是下一个音符之前
 						if "!c!"=="#" set s=2
 						if "!c!"=="b" set s=2
-						if "!c!"=="+" set s=2
+						if "!c!"=="~" set s=2
 						REM 在最后会获取到空串，表示最后一个音符处理
 						if "!c!"=="" set s=2
 						if "0" leq "!c!" if "!c!" leq "7" set s=2
