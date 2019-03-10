@@ -1,21 +1,32 @@
 @echo off
 if not "%*"=="" goto main
-echo 请选择简谱
+
+cls
+echo waver是一个将简谱转化为wav文件的工具。
+echo;
+echo 支持休止符，附点，升/降调，三连音的处理。
+echo;
+echo 你可以将多个简谱放在一起生成(类似于背景伴奏)。
+echo;
+echo;
+echo                 请选择简谱
+
 call selectfile name
 if not defined name goto :eof
 set list="%name:"=%"
 
 :ask
-set /p i=需要选择更多简谱？(Y/N)
+set /p i=需要选择更多简谱吗？(Y/N)
 if not defined i goto ask
 if /i "%i:"=%"=="N" (
 	call :main %list%
 	goto :eof
 )
 if /i not "%i:"=%"=="Y" goto UI
-echo 请选择简谱
+echo                 请选择简谱
 call selectfile name
 if not defined name (
+	cls
 	call :main %list%
 	goto :eof
 )
@@ -26,9 +37,10 @@ goto ask
 
 setlocal enabledelayedexpansion
 
+REM 采样率
 set sp=11025
 
-set /a t1=sp
+set /a t1=sp/2
 
 REM 各个音符的频率
 set f1=256
@@ -46,15 +58,12 @@ for %%o in (%*) do (
 	REM 生成波形，hex文件格式：
 	REM 有多行，每一行有两个数字 a b ，表示有 a 个字符码为 b 的字符
 	call :compile "%%~fo" >"%%~dpno.hex"
-	REM 转换
-	hex2snd.vbs "%%~dpno.hex" "%%~dpno.snd"
-	del "%%~dpno.hex"
-	set snd=!snd! "%%~dpno.snd"
+	set snd=!snd! "%%~dpno.hex"
 )
 
 REM 混合
 echo 正在生成. . .
-mergesnd.vbs !snd!
+makesnd.vbs "%~dpn1.snd" !snd!
 
 REM 获得大小
 for %%a in ("%~dpn1.snd") do set szsnd=%%~za
@@ -107,12 +116,11 @@ REM 输出wav头
 	REM DATA数据块
 ) > "%~dpn1_head.hex"
 
-hex2snd.vbs "%~dpn1_head.hex" "%~dpn1.head"
+makesnd.vbs "%~dpn1.head" "%~dpn1_head.hex"
 
 REM 合并成品
 copy /b "%~dpn1.head" + "%~dpn1.snd" "%~dpn1.wav" >nul
-for %%o in (%*) do del "%%~dpno.snd"
-del "%~dpn1_head.hex" "%~dpn1.head"
+del "%~dpn1.snd" "%~dpn1_head.hex" "%~dpn1.head" !snd!
 echo 已保存到 "%~dpn1.wav" .
 pause
 goto :eof
@@ -120,41 +128,6 @@ goto :eof
 :compile
 (more <"%~1" & echo $)>"%~dpn0.tmp"
 
-set $n=0
-REM 计算要处理的音符数量
-for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
-	set l=%%l
-	if not "!l:~,1!"=="$" (
-		set /a n+=1
-		set l!n!=!l!
-		REM 获取有音符的行
-		for /l %%n in (0,1,7) do if not "!l!"=="!l:%%n=!" set ml=!n!
-	) else (
-		if !n! neq 0 (
-			REM 获取有音符的行的长度到 len
-			REM 用for中转变量!ml!到%%m
-			for %%m in (!ml!) do set "$=!l%%m!#"
-			set len=0
-			for %%a in (4096 2048 1024 512 256 128 64 32 16) do (
-				if not "!$:~%%a!"=="" (
-					set /a len+=%%a
-					set $=!$:~%%a!
-				)
-			)
-			set $=!$!fedcba9876543210
-			set /a len+=0x!$:~16,1!
-			REM 获取有音符的行的长度到 len 完成
-			for %%m in (!ml!) do for /l %%x in (0,1,!len!) do (
-				set c=!l%%m:~%%x,1!
-				REM 音符计数
-				if "0" leq "!c!" if "!c!" leq "7" set /a $n+=1
-			)
-		)
-	)
-)
-REM 计算要处理的音符数量 完成
-
-set $c=0
 set n=0
 
 for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
@@ -165,7 +138,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 		REM 获取有音符的行
 		for /l %%n in (0,1,7) do if not "!l!"=="!l:%%n=!" set ml=!n!
 	) else (
-		REM 处理行
+		REM -------- 处理行 --------
 		if !n! neq 0 (
 			REM 获取有音符的行的长度到 len
 			for %%m in (!ml!) do set "$=!l%%m!#"
@@ -211,10 +184,8 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 						if "!c!"=="" set s=2
 						if "0" leq "!c!" if "!c!" leq "7" set s=2
 						if "!s!"=="2" (
-							set /a $c+=1
-							title !$c!/!$n! "%~1"
-
-							REM 处理音符，mx是音符的位置
+							REM -------- 处理音符 --------
+							REM mx是音符的位置
 							for %%x in (!mx!) do (
 								for /l %%l in (1,1,!n!) do (
 									set cn=!l%%l:~%%x,1!
@@ -240,17 +211,17 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 								if !tw! gtr 0 echo !tw! 128
 
 								REM x方波段数
-								set /a t0=t-tw,x=t0*feq/sp
+								set /a t0=t-tw,x=t0*feq*2/sp
 								for /l %%x in (1,1,!x!) do (
 									REM 输出方波
-									set /a "e=(%%x %% 2)*128+64,t2=%%x*sp/feq - (%%x-1)*sp/feq"
+									set /a "e=(%%x %% 2)*128+64,t2=%%x*sp/2/feq - (%%x-1)*sp/2/feq"
 									if !t2! gtr 0 echo !t2! !e!
 								)
 								REM 补上方波最后一段
-								set /a "e=((x+1)%% 2)*128+64,t2=t0-x*sp/feq"
+								set /a "e=((x+1)%% 2)*128+64,t2=t0-x*sp/2/feq"
 								if !t2! gtr 0 echo !t2! !e!
 							)
-							REM 处理音符 完成
+							REM -------- 处理音符 完成 --------
 							set s=0
 							set k=256
 							set t=!t1!
@@ -270,7 +241,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 				)
 			)
 		)
-		REM 处理行 完成
+		REM -------- 处理行 完成 --------
 		set n=0
 	)
 )
