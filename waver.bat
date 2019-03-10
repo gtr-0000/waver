@@ -234,7 +234,7 @@ for /f "usebackq delims=" %%l in ("%~dpn0.tmp") do (
 						if "!c!"=="#" set /a k=k*f4/f3
 						if "!c!"=="b" set /a k=k*f3/f4
 						REM 连音，把tw设为0
-						if "!c!"=="+" set tw=0
+						if "!c!"=="~" set tw=0
 						REM 获得音符，mx保存音符位置
 						if "0" leq "!c!" if "!c!" leq "7" set /a feq=f!c!*k/256,s=1,mx=%%x
 					)
